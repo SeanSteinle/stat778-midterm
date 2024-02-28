@@ -57,3 +57,4 @@ def rmvexp(n: int, cov_mat: np.ndarray, seed: int=42):
 #behind every call. This makes sequential draws highly correlated, but they should be independent.
     #2b. I have a similar problem in my rinvstdnorm function. I can just rerun it many times to get a better estimate though.
     #One idea: generate a stream? this is how I solved the problem in rnorm
+#3. can I reuse Hw#4 code for problem 2?

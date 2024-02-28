@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from rng import rmvexp, rinvstdnorm, rbern
 
 def problem1b():
@@ -16,8 +17,12 @@ def problem1c(X: np.ndarray):
         #print(f"y: {y}\tp: {p}") #TODO: seeding problem
         Y.append(y)
     print(f"Created linear systematic component Y: {Y}")
-    #TODO: this is working right....... but the seed gets stuck and so the same number gets returned.
-
+    df = pd.DataFrame(X)
+    df.columns = ["X"+str(i) for i in range(1,31)]
+    df["Y"] = Y
+    df.to_csv("data/p1_result.csv")
+    return df
+    
 if __name__ == "__main__":
     print("Solving problem 1b...")
     random_deviates = problem1b()
