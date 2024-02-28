@@ -37,6 +37,8 @@ def rinvstdnorm(x: int, seed: int=42):
     N = 1000
     return sum([x <= sample for sample in rstdnorm(N,seed)])/N
 
+
+#keep these
 def rexp(n: int=1, l: float=1.0, seed: int=42):
     """A univariate exponential random number generator, generates n samples for rate l."""
     U = runif(n, seed)
@@ -45,16 +47,7 @@ def rexp(n: int=1, l: float=1.0, seed: int=42):
 
 def rmvexp(n: int, cov_mat: np.ndarray, seed: int=42):
     """A multivariate exponential random number sampler, creates n samples from cov_mat covariance matrix."""
-    exp_samples = np.asarray(rexp(n*len(cov_mat), 1, seed)).reshape(n,len(cov_mat)) #is this right?
-    cov_mat_sqrt = np.linalg.cholesky(cov_mat) #TODO: add error checking here
+    exp_samples = np.random.exponential(1, (n,len(cov_mat))) #is this right?
+    cov_mat_sqrt = np.transpose(np.linalg.cholesky(cov_mat)) #TODO: add error checking here
     mvexp_sample = np.dot(exp_samples,cov_mat_sqrt)
     return mvexp_sample
-
-#Questions:
-#1. am I sampling correctly in rmvexp? I sample 200*30 (n*len(cov_mat)) times from the univariate exponential,
-#then I take the dot product by the cov_mat.
-#2. When I sample the bernoulli distribution to get the linear systematic component, the same runif() draw is
-#behind every call. This makes sequential draws highly correlated, but they should be independent.
-    #2b. I have a similar problem in my rinvstdnorm function. I can just rerun it many times to get a better estimate though.
-    #One idea: generate a stream? this is how I solved the problem in rnorm
-#3. can I reuse Hw#4 code for problem 2?

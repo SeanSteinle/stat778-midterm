@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 from rng import rmvexp, rinvstdnorm, rbern
+
+#TODO: seed rng
 
 def problem1b():
     cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
@@ -12,8 +15,8 @@ def problem1c(X: np.ndarray):
     Y = []
     for i in range(len(X)):
         sub_deviates = X[i,1]+X[i,2]-X[i,6]-X[i,7]-X[i,11]+X[i,13]
-        p = rinvstdnorm(sub_deviates)
-        y = rbern(p, 18646)
+        p = norm.cdf(sub_deviates) #rinvstdnorm(sub_deviates)
+        y = 0 if p >= np.random.random() else 1 #rbern(p, 18646)
         #print(f"y: {y}\tp: {p}") #TODO: seeding problem
         Y.append(y)
     print(f"Created linear systematic component Y: {Y}")
