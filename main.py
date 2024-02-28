@@ -1,11 +1,25 @@
 import numpy as np
-from rng import rmvexp
+from rng import rmvexp, rinvstdnorm, rbern
 
 def problem1b():
     cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
     mvexp_samples = rmvexp(200, cov_mat)
     print(f"Created samples: {mvexp_samples}")
+    return mvexp_samples
+
+def problem1c(X: np.ndarray):
+    Y = []
+    for i in range(len(X)):
+        sub_deviates = X[i,1]+X[i,2]-X[i,6]-X[i,7]-X[i,11]+X[i,13]
+        p = rinvstdnorm(sub_deviates)
+        y = rbern(p, 18646)
+        #print(f"y: {y}\tp: {p}") #TODO: seeding problem
+        Y.append(y)
+    print(f"Created linear systematic component Y: {Y}")
+    #TODO: this is working right....... but the seed gets stuck and so the same number gets returned.
 
 if __name__ == "__main__":
     print("Solving problem 1b...")
-    problem1b()
+    random_deviates = problem1b()
+    print("Solving problem 1c...")
+    problem1c(random_deviates)
