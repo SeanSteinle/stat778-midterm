@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
-from rng import rmvexp, rinvstdnorm, rbern
+from numpy.random import random
+from rng import rmvexp
 
-#TODO: seed rng
+np.random.seed(42)
 
 def problem1b():
     cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
@@ -14,12 +15,13 @@ def problem1b():
 def problem1c(X: np.ndarray):
     Y = []
     for i in range(len(X)):
-        sub_deviates = X[i,1]+X[i,2]-X[i,6]-X[i,7]-X[i,11]+X[i,13]
-        p = norm.cdf(sub_deviates) #rinvstdnorm(sub_deviates)
-        y = 0 if p >= np.random.random() else 1 #rbern(p, 18646)
-        #print(f"y: {y}\tp: {p}") #TODO: seeding problem
+        sub_deviates = X[i,1]+X[i,2]-X[i,6]-X[i,7]-X[i,11]+X[i,13] #compile X from matrix components
+        p = norm.cdf(sub_deviates) #get p from x->inverse stdnormal
+        y = 0 if p >= random() else 1 #sample from bernoulli w/ prob p
         Y.append(y)
     print(f"Created linear systematic component Y: {Y}")
+
+    #cleaning up results with pandas
     df = pd.DataFrame(X)
     df.columns = ["X"+str(i) for i in range(1,31)]
     df["Y"] = Y
