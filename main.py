@@ -8,8 +8,8 @@ from sklearn.model_selection import RepeatedKFold, LeaveOneOut
 from sklearn.model_selection import cross_validate
 from sklearn.metrics import make_scorer
 
-from utils.rng import rmvexp
-from utils.parallelize import make_groups, run_cv, aggregate_partitioned_results
+from rng import rmvexp
+from parallelize import make_groups, run_cv, aggregate_partitioned_results
 
 np.random.seed(42)
 

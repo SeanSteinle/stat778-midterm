@@ -6,7 +6,7 @@ from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_validate
 from sklearn.metrics import make_scorer
 
-from utils.metrics import mspe
+from metrics import mspe
 
 models = [LogisticRegression(), LinearRegression()]
 

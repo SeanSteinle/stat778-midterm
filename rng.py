@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.random import exponential
 from numpy.linalg import cholesky, LinAlgError
-import math
 
 def rmvexp(n: int, cov_mat: np.ndarray, seed: int=42):
     """A multivariate exponential random number sampler, creates n samples from cov_mat covariance matrix."""
