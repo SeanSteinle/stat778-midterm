@@ -10,16 +10,15 @@ from utils.metrics import mspe
 
 models = [LogisticRegression(), LinearRegression()]
 
-def all_models_repK(df: pd.DataFrame, n_repeats: int, n_splits: int):
-    """Runs n_repeats repetitions of k-fold cross validations where k=n_splits."""
+def run_cv(df: pd.DataFrame, cv_technique):
+    """Runs cross validation scheme specified by cv_technique on data in df."""
     scores = {}
     metrics = {
         "mspe": make_scorer(mspe),
     }
-    for model in models:
-        X,y = df.drop("y", axis=1),df["y"] #assuming only X and y are present.
-        rkf = RepeatedKFold(n_repeats=n_repeats,n_splits=n_splits)
-        score = cross_validate(model, X, y, cv=rkf, scoring=metrics)
+    for model in [LogisticRegression(), LinearRegression()]:
+        X,y = df.drop("Y", axis=1),df["Y"] #assuming only X and y are present.
+        score = cross_validate(model, X, y, cv=cv_technique, scoring=metrics)
         scores[str(model)] = score
     return scores
 
@@ -37,15 +36,15 @@ def make_groups(num_reps: int, num_jobs: int):
             groups.append(groupsize)
     return groups
 
-def run_jobs(n_jobs: int, df: pd.DataFrame, n_repeats: int=10, n_splits: int=10):
-    """High-level function which parallelizes all_models_repK for n_jobs."""
+def run_jobs(n_jobs: int, df: pd.DataFrame, cv_technique, n_repeats: int=10, n_splits: int=10):
+    """High-level function which parallelizes run_cv for n_jobs."""
     reps = make_groups(n_repeats, n_jobs)
-    results = Parallel(n_jobs=n_jobs)(delayed(all_models_repK)(df, r, n_splits) for r in reps)
+    results = Parallel(n_jobs=n_jobs)(delayed(run_cv)(df, r, n_splits, cv_technique) for r in reps) #this doesn't 
     return results
 
 def aggregate_partitioned_results(scores: list):
     """Brings partitioned data back together under a model->metric->values dictionary structure."""
-    model_results = {str(model_name):{"mspe":[]} for model_name in models}
+    model_results = {str(model_name):{"mspe":[]} for model_name in [LogisticRegression(),LinearRegression()]}
     for partition_n,partition_data in enumerate(scores):
         for model_n,model_name in enumerate(partition_data.keys()): #model_n is 0 indexed
             model_results[model_name]["mspe"].extend(partition_data[model_name]["test_mspe"])
