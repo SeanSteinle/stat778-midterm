@@ -6,9 +6,11 @@ from scipy.stats import norm
 from numpy.random import random
 from joblib import Parallel, delayed
 from time import time
-from sklearn.model_selection import RepeatedKFold, LeaveOneOut
+from sklearn.model_selection import RepeatedKFold, LeaveOneOut, train_test_split
+from sklearn.linear_model import LinearRegression
 
 from rng import rmvexp
+from metrics import gcv
 from parallelize import make_groups, run_cv, aggregate_partitioned_results
 
 seed = 42
@@ -99,8 +101,28 @@ def problem2b(df):
 
     return loo_model_results
 
-def problem2c():
-    raise NotImplementedError
+def problem2c(df, rkf_results, loo_results):
+    #train generalized model
+    linr = LinearRegression()
+    X,y = df.drop("Y", axis=1),df["Y"]
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2, random_state=seed) #TODO: should this be dropped?
+    linr.fit(X_train,y_train)
+
+    #extract predictions, calculate gcv approximation
+    preds = linr.predict(X_test)
+    q = len(linr.coef_)
+    gcv_error = gcv(preds,y_test,q)
+
+    #aggregate average errors for rkf and loo, output results
+    rkf_mspes = rkf_results['LinearRegression()']['mspe'] 
+    rkf_avg_mspe = sum(rkf_mspes)/len(rkf_mspes) 
+
+    loo_mspes = loo_results['LinearRegression()']['mspe'] 
+    loo_avg_mspe = sum(loo_mspes)/len(loo_mspes) 
+    
+    print(f"RKF Average MSPE: {rkf_avg_mspe}\tLOO Average MSPE: {loo_avg_mspe}\tGCV Approximation: {gcv_error}")
+
+    return rkf_avg_mspe, loo_avg_mspe, gcv_error
 
 if __name__ == "__main__":
     print("Solving problem 1b...")
@@ -108,8 +130,8 @@ if __name__ == "__main__":
     print("Solving problem 1c...")
     df = problem1c(random_deviates) #generate Y
     print("Solving problem 2a...")
-    rkf_results = problem2a(df) #estimate Y w/ LinR+LogR, use RKF validation
+    rkf_results = problem2a(df) #estimate Y w/ LinR+LogR, use RKF validation and MSPE error
     print("Solving problem 2b...")
-    loo_results = problem2b(df) #estimate Y w/ LinR+LogR, use LOO validation
-    #print("Solving problem 2c...")
-    #problem2c()
+    loo_results = problem2b(df) #estimate Y w/ LinR+LogR, use LOO validation and MSPE error
+    print("Solving problem 2c...")
+    rkf_e, loo_e, gcv_e = problem2c(df, rkf_results, loo_results) #estimate Y w/ Linr+LogR, but score with generalized cross-validation approximation

@@ -1,8 +1,6 @@
 import pandas as pd
-from joblib import Parallel, delayed
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_validate
 from sklearn.metrics import make_scorer
 
