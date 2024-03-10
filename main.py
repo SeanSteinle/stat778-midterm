@@ -13,6 +13,10 @@ from rng import rmvexp
 from metrics import gcv, mspe
 from parallelize import make_groups, run_cv, aggregate_partitioned_results
 
+#suppress non-convergence warnings for logistic regression
+from warnings import filterwarnings
+filterwarnings('ignore')
+
 #global variables
 seed = 42
 np.random.seed(seed)
@@ -32,13 +36,13 @@ def problem1c(X: np.ndarray, save_path=""):
         p = norm.cdf(sub_deviates) #get p from x->inverse stdnormal
         y = 0 if p >= random() else 1 #sample from bernoulli w/ prob p
         Y.append(y)
-    print(f"Created linear systematic component Y: {Y}")
 
     #cleaning up results with pandas
     df = pd.DataFrame(X)
     df.columns = ["X"+str(i) for i in range(1,31)]
     df["Y"] = Y
-    if save_path != "":
+    if save_path != "": #function is used outside of 1c, only save path and print results in 1c
+        print(f"Created linear systematic component Y: {Y}")
         df.to_csv(save_path, index=False)
     return df
     
@@ -183,21 +187,53 @@ def problem3a(df1):
 
 def problem3b(df3a):
     #create 1,000 data sets (df3b_sets)
+    X = [rmvexp(200, cov_mat, seed) for _ in range(1000)] #sample from mv exponential distribution
+    df = [problem1c(X[i]) for i in range(1000)] #calculate true Ys
 
     #train 1,000 linr+logr models
+    M = []
+    for i in range(len(df)):
+        models_for_set = []
+        for m in [LogisticRegression(), LinearRegression()]:
+            X,y = df[i].drop("Y", axis=1),df[i]["Y"]
+            models_for_set.append(m.fit(X,y))
+        M.append(models_for_set)
 
     #calculate model errors for predictions against df3a for all 1,000 models
+    linr_mspes,logr_mspes = [],[]
+    X,y = df3a.drop('Y', axis=1), df3a['Y']
+    for (linr,logr) in M:
+        preds = linr.predict(X)
+        linr_mspes.append(mspe(preds,y))
+        preds = logr.predict(X)
+        logr_mspes.append(mspe(preds,y))
 
     #average model error for each model
+    linr_uncond_error, logr_uncond_error = sum(linr_mspes)/len(linr_mspes), sum(logr_mspes)/len(logr_mspes) 
 
-    #return linr_uncond_error,logr_uncond_error
+    return linr_uncond_error, logr_uncond_error
 
-    raise NotImplementedError
+def problem3c(cv_errors, conuncond_errors):
+    answer = f"""The cross-validation estimations of error for each model are as follows:\n{cv_errors}.
+    The conditional and unconditional estimations of error for each model are as follows:\n{conuncond_errors}.
 
-def problem3c():
-    raise NotImplementedError
+    In both cases, the conditional error estimation is higher than the unconditional error estimation. In the case
+    of logistic regression the conditional estimation is more similar to the majority of the cross-validation metrics.
+    Interestingly, opposite is true for linear regression: unconditional estimation is more similar to the 
+    cross-validation estimates.
+
+    From a theoretical standpoint the conditional error estimation provides the best estimation of error for the
+    entirety of the distribution because it incorporates a new portion of the distribution in its error estimate
+    after training whereas cross-validation methods estimate error by splitting the training set many ways.
+    """
+
+    with open("data/3c_answer.txt", "w") as f:
+        f.write(answer)
+
+    print(answer)
 
 if __name__ == "__main__":
+    #note: 1a is solved by rmvexp() in rng.py
     print("Solving problem 1b...")
     random_deviates = problem1b() #generate X
     print("Solving problem 1c...")
@@ -210,10 +246,15 @@ if __name__ == "__main__":
     cv_errors = problem2c(df1, rkf_results, loo_results) #estimate Y w/ Linr+LogR, but score with generalized cross-validation approximation
     print("Solving problem 3a...")
     df3b, linr_cond_error, logr_cond_error = problem3a(df1)
-    print(f"LinR Conditional Error: {linr_cond_error}\tLogR Conditional Error: {logr_cond_error}")
-    #print("Solving problem 3b...")
-    #linr_uncond_error, logr_uncond_error = problem3b(df3b)
+    print("Solving problem 3b...")
+    linr_uncond_error, logr_uncond_error = problem3b(df3b)
+    
+    conuncond_errors = { #conditional and unconditional error dictionary
+        "Logistic": {"Conditional": logr_cond_error,
+                     "Unconditional": logr_uncond_error},
+        "Linear": {"Conditional": linr_cond_error,
+                   "Unconditional": linr_uncond_error}
+    }
 
-    #TODO: construct cond_uncond_errors dictionary!
-    #print("Solving problem 3c...")
-    #problem3c(cv_errors, cond_uncond_errors)
+    print("Solving problem 3c...")
+    problem3c(cv_errors, conuncond_errors)
