@@ -1,19 +1,20 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import json
 from scipy.stats import norm
 from numpy.random import random
 from joblib import Parallel, delayed
-import matplotlib.pyplot as plt
+from time import time
 from sklearn.model_selection import RepeatedKFold, LeaveOneOut
-from sklearn.model_selection import cross_validate
-from sklearn.metrics import make_scorer
 
 from rng import rmvexp
 from parallelize import make_groups, run_cv, aggregate_partitioned_results
 
-np.random.seed(42)
+seed = 42
+np.random.seed(seed)
 
-#problem 1a is implemented as rmvexp()
+#Note: problem 1a is implemented as rmvexp()
 
 def problem1b():
     cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
@@ -34,18 +35,28 @@ def problem1c(X: np.ndarray):
     df = pd.DataFrame(X)
     df.columns = ["X"+str(i) for i in range(1,31)]
     df["Y"] = Y
-    df.to_csv("data/p1_result.csv", index=False)
+    df.to_csv(f"data/p1_result_{seed}.csv", index=False)
     return df
     
 def problem2a(df):
-    n_repeats, n_jobs = 10, 5
+    #configure repeated k-fold cross-validation (rkf)
+    n_repeats, n_splits, n_jobs = 10, 10, 5
     reps = make_groups(n_repeats, n_jobs)
-
-    n_splits = 10
     rkf = RepeatedKFold(n_repeats=n_repeats,n_splits=n_splits)
+    
+    #run and time rkf
+    st = time()
     rkf_scores = Parallel(n_jobs=n_jobs)(delayed(run_cv)(df, rkf) for r in reps)
+    runtime = time() - st
+
+    #aggregate results, add metadata to dictionary, save as json
     rkf_model_results = aggregate_partitioned_results(rkf_scores)
-    #TODO: save RKF scores as json output
+    rkf_model_results['repeats'] = n_repeats
+    rkf_model_results['splits'] = n_splits
+    rkf_model_results['runtime'] = runtime
+    rkf_model_results['jobs'] = n_jobs
+    with open(f"data/rkf_results_{seed}.json", "w") as f: 
+        json.dump(rkf_model_results, f)
 
     #plot results and save to plots folder
     fig = plt.figure(figsize =(10, 7))
@@ -55,23 +66,50 @@ def problem2a(df):
     plt.xlabel("Model Type")
     plt.ylabel("Mean Squared Prediction Error")
     plt.title("MSPE For Logistic and Linear Regression with Repeated K-Fold Cross Validation")
-    plt.savefig("plots/mspe_loglin_loo.png")
-    raise NotImplementedError
+    plt.savefig(f"plots/mspe_loglin_rkf_{seed}.png")
 
-def problem2b():
-    raise NotImplementedError
+    return rkf_model_results
+
+def problem2b(df):
+    #configure leave one out cross-validation (loo)
+    n_jobs = 5
+    loo = LeaveOneOut()
+
+    #run and time loo
+    st = time()
+    loo_scores = Parallel(n_jobs=n_jobs)(delayed(run_cv)(df, loo) for i in range(1)) #this looks cl
+    runtime = time() - st
+    
+    #add metadata to results dictionary, save as json
+    loo_model_results = aggregate_partitioned_results(loo_scores)
+    loo_model_results['runtime'] = runtime
+    loo_model_results['jobs'] = n_jobs
+    with open(f"data/loo_results_{seed}.json", "w") as f: 
+        json.dump(loo_model_results, f)
+
+    #plot results
+    fig = plt.figure(figsize =(10, 7))
+    ax = fig.add_subplot(111)
+    plt.boxplot([loo_model_results['LogisticRegression()']['mspe'],loo_model_results['LinearRegression()']['mspe']])
+    ax.set_xticklabels(['Logistic Regression', 'Linear Regression'])
+    plt.xlabel("Model Type")
+    plt.ylabel("Mean Squared Prediction Error")
+    plt.title("MSPE For Logistic and Linear Regression with Leave One Out Cross Validation")
+    plt.savefig(f"plots/mspe_loglin_loo_{seed}.png")
+
+    return loo_model_results
 
 def problem2c():
     raise NotImplementedError
 
 if __name__ == "__main__":
     print("Solving problem 1b...")
-    random_deviates = problem1b()
+    random_deviates = problem1b() #generate X
     print("Solving problem 1c...")
-    df = problem1c(random_deviates)
+    df = problem1c(random_deviates) #generate Y
     print("Solving problem 2a...")
-    problem2a(df)
+    rkf_results = problem2a(df) #estimate Y w/ LinR+LogR, use RKF validation
     print("Solving problem 2b...")
-    problem2b(df)
-    print("Solving problem 2c...")
-    problem2c()
+    loo_results = problem2b(df) #estimate Y w/ LinR+LogR, use LOO validation
+    #print("Solving problem 2c...")
+    #problem2c()

@@ -36,12 +36,6 @@ def make_groups(num_reps: int, num_jobs: int):
             groups.append(groupsize)
     return groups
 
-def run_jobs(n_jobs: int, df: pd.DataFrame, cv_technique, n_repeats: int=10, n_splits: int=10):
-    """High-level function which parallelizes run_cv for n_jobs."""
-    reps = make_groups(n_repeats, n_jobs)
-    results = Parallel(n_jobs=n_jobs)(delayed(run_cv)(df, r, n_splits, cv_technique) for r in reps) #this doesn't 
-    return results
-
 def aggregate_partitioned_results(scores: list):
     """Brings partitioned data back together under a model->metric->values dictionary structure."""
     model_results = {str(model_name):{"mspe":[]} for model_name in [LogisticRegression(),LinearRegression()]}
