@@ -7,24 +7,25 @@ from numpy.random import random
 from joblib import Parallel, delayed
 from time import time
 from sklearn.model_selection import RepeatedKFold, LeaveOneOut, train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 from rng import rmvexp
-from metrics import gcv
+from metrics import gcv, mspe
 from parallelize import make_groups, run_cv, aggregate_partitioned_results
 
+#global variables
 seed = 42
 np.random.seed(seed)
+cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
 
 #Note: problem 1a is implemented as rmvexp()
 
 def problem1b():
-    cov_mat = np.genfromtxt("data/1b_matrix.csv", delimiter=',')
-    mvexp_samples = rmvexp(200, cov_mat)
+    mvexp_samples = rmvexp(200, cov_mat, seed)
     print(f"Created samples: {mvexp_samples}")
     return mvexp_samples
 
-def problem1c(X: np.ndarray):
+def problem1c(X: np.ndarray, save_path=""):
     Y = []
     for i in range(len(X)):
         sub_deviates = X[i,1]+X[i,2]-X[i,6]-X[i,7]-X[i,11]+X[i,13] #compile X from matrix components
@@ -37,7 +38,8 @@ def problem1c(X: np.ndarray):
     df = pd.DataFrame(X)
     df.columns = ["X"+str(i) for i in range(1,31)]
     df["Y"] = Y
-    df.to_csv(f"data/p1_result_{seed}.csv", index=False)
+    if save_path != "":
+        df.to_csv(save_path, index=False)
     return df
     
 def problem2a(df):
@@ -102,6 +104,8 @@ def problem2b(df):
     return loo_model_results
 
 def problem2c(df, rkf_results, loo_results):
+    results = {"Logistic": {}, "Linear": {}}
+
     #train generalized model
     linr = LinearRegression()
     X,y = df.drop("Y", axis=1),df["Y"]
@@ -110,28 +114,106 @@ def problem2c(df, rkf_results, loo_results):
     #extract predictions, calculate gcv approximation
     preds = linr.predict(X)
     q = len(linr.coef_)
-    gcv_error = gcv(preds,y,q)
+    linr_gcv_error = gcv(preds,y,q)
 
     #aggregate average errors for rkf and loo, output results
     rkf_mspes = rkf_results['LinearRegression()']['mspe'] 
-    rkf_avg_mspe = sum(rkf_mspes)/len(rkf_mspes) 
+    linr_rkf_avg_mspe = sum(rkf_mspes)/len(rkf_mspes) 
 
     loo_mspes = loo_results['LinearRegression()']['mspe'] 
-    loo_avg_mspe = sum(loo_mspes)/len(loo_mspes) 
+    linr_loo_avg_mspe = sum(loo_mspes)/len(loo_mspes) 
     
-    print(f"RKF Average MSPE: {rkf_avg_mspe}\tLOO Average MSPE: {loo_avg_mspe}\tGCV Approximation: {gcv_error}")
+    results["Linear"] = {
+        "RKF": linr_rkf_avg_mspe,
+        "LOO": linr_loo_avg_mspe,
+        "GCV": linr_gcv_error
+    }
 
-    return rkf_avg_mspe, loo_avg_mspe, gcv_error
+    print(f"(Linear Regression) RKF Average MSPE: {linr_rkf_avg_mspe}\tLOO Average MSPE: {linr_loo_avg_mspe}\tGCV Approximation: {linr_gcv_error}")
+
+    #NOTE: here I estimate Logistic Regression errors too. this wasn't explicitly asked for,
+    #but allows us to look at a clearer picture in 3c when we analyze all of our error estimations.
+    
+    #NOTE: also, I didn't make this code into functions bc code is only repeated twice. if this was for 3 or more
+    #model types it would make sense to.
+
+    #train generalized model
+    logr = LogisticRegression()
+    X,y = df.drop("Y", axis=1),df["Y"]
+    logr.fit(X,y)
+
+    #extract predictions, calculate gcv approximation
+    preds = logr.predict(X)
+    q = len(logr.coef_)
+    logr_gcv_error = gcv(preds,y,q)
+
+    #aggregate average errors for rkf and loo, output results
+    rkf_mspes = rkf_results['LogisticRegression()']['mspe'] 
+    logr_rkf_avg_mspe = sum(rkf_mspes)/len(rkf_mspes) 
+
+    loo_mspes = loo_results['LogisticRegression()']['mspe'] 
+    logr_loo_avg_mspe = sum(loo_mspes)/len(loo_mspes) 
+
+    results["Logistic"] = {
+        "RKF": logr_rkf_avg_mspe,
+        "LOO": logr_loo_avg_mspe,
+        "GCV": logr_gcv_error
+    }
+    return results
+
+def problem3a(df1):
+    #train linr+logr models on df1
+    M = []
+    for m in [LogisticRegression(), LinearRegression()]:
+        X,y = df1.drop("Y", axis=1),df1["Y"]
+        M.append(m.fit(X,y))
+
+    #sample new dataset (df3a), calculate model errors for predictions on df3a
+    X3a = rmvexp(10000, cov_mat, seed)
+    df3a = problem1c(X3a)
+    errors = []
+    for m in M:
+        X,y = df3a.drop("Y", axis=1),df3a["Y"]
+        preds = m.predict(X)
+        errors.append(mspe(preds,y))
+    linr_cond_error, logr_cond_error = errors
+
+    return df3a, linr_cond_error, logr_cond_error
+    
+
+def problem3b(df3a):
+    #create 1,000 data sets (df3b_sets)
+
+    #train 1,000 linr+logr models
+
+    #calculate model errors for predictions against df3a for all 1,000 models
+
+    #average model error for each model
+
+    #return linr_uncond_error,logr_uncond_error
+
+    raise NotImplementedError
+
+def problem3c():
+    raise NotImplementedError
 
 if __name__ == "__main__":
     print("Solving problem 1b...")
     random_deviates = problem1b() #generate X
     print("Solving problem 1c...")
-    df = problem1c(random_deviates) #generate Y
+    df1 = problem1c(random_deviates, f"data/p1_result_{seed}.csv") #generate Y
     print("Solving problem 2a...")
-    rkf_results = problem2a(df) #estimate Y w/ LinR+LogR, use RKF validation and MSPE error
+    rkf_results = problem2a(df1) #estimate Y w/ LinR+LogR, use RKF validation and MSPE error
     print("Solving problem 2b...")
-    loo_results = problem2b(df) #estimate Y w/ LinR+LogR, use LOO validation and MSPE error
+    loo_results = problem2b(df1) #estimate Y w/ LinR+LogR, use LOO validation and MSPE error
     print("Solving problem 2c...")
-    rkf_e, loo_e, gcv_e = problem2c(df, rkf_results, loo_results) #estimate Y w/ Linr+LogR, but score with generalized cross-validation approximation
-    
+    cv_errors = problem2c(df1, rkf_results, loo_results) #estimate Y w/ Linr+LogR, but score with generalized cross-validation approximation
+    print("Solving problem 3a...")
+    df3b, linr_cond_error, logr_cond_error = problem3a(df1)
+    print(f"LinR Conditional Error: {linr_cond_error}\tLogR Conditional Error: {logr_cond_error}")
+    #print("Solving problem 3b...")
+    #linr_uncond_error, logr_uncond_error = problem3b(df3b)
+
+    #TODO: construct cond_uncond_errors dictionary!
+    #print("Solving problem 3c...")
+    #problem3c(cv_errors, cond_uncond_errors)
