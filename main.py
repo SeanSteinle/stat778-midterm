@@ -105,13 +105,12 @@ def problem2c(df, rkf_results, loo_results):
     #train generalized model
     linr = LinearRegression()
     X,y = df.drop("Y", axis=1),df["Y"]
-    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2, random_state=seed) #TODO: should this be dropped?
-    linr.fit(X_train,y_train)
+    linr.fit(X,y)
 
     #extract predictions, calculate gcv approximation
-    preds = linr.predict(X_test)
+    preds = linr.predict(X)
     q = len(linr.coef_)
-    gcv_error = gcv(preds,y_test,q)
+    gcv_error = gcv(preds,y,q)
 
     #aggregate average errors for rkf and loo, output results
     rkf_mspes = rkf_results['LinearRegression()']['mspe'] 
@@ -135,3 +134,4 @@ if __name__ == "__main__":
     loo_results = problem2b(df) #estimate Y w/ LinR+LogR, use LOO validation and MSPE error
     print("Solving problem 2c...")
     rkf_e, loo_e, gcv_e = problem2c(df, rkf_results, loo_results) #estimate Y w/ Linr+LogR, but score with generalized cross-validation approximation
+    
