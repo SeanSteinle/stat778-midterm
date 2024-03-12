@@ -217,14 +217,11 @@ def problem3c(cv_errors, conuncond_errors):
     answer = f"""The cross-validation estimations of error for each model are as follows:\n{cv_errors}.
     The conditional and unconditional estimations of error for each model are as follows:\n{conuncond_errors}.
 
-    In both cases, the conditional error estimation is higher than the unconditional error estimation. In the case
+    Whether cross-validation better predicts conditional or unconditional error seems to depend on the model type. In the case
     of logistic regression the conditional estimation is more similar to the majority of the cross-validation metrics.
-    Interestingly, opposite is true for linear regression: unconditional estimation is more similar to the 
-    cross-validation estimates.
-
-    From a theoretical standpoint the conditional error estimation provides the best estimation of error for the
-    entirety of the distribution because it incorporates a new portion of the distribution in its error estimate
-    after training whereas cross-validation methods estimate error by splitting the training set many ways.
+    The opposite is true for linear regression: unconditional estimation is more similar to the cross-validation estimates.
+    That said cross-validation estimates both conditional and unconditional much better in logistic regression than in 
+    linear regression.
     """
 
     with open("data/3c_answer.txt", "w") as f:
